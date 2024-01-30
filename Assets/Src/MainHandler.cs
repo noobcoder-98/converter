@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using System;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 public class MainHandler : MonoBehaviour
 {
@@ -13,20 +15,44 @@ public class MainHandler : MonoBehaviour
         rootPath = Path.Combine(userPath, "AppData", "LocalLow", "TripleBricks", "LegendaryHoplite");
     }
 
-    public void BackupAndRenameFiles()
+    public async void BackupAndRenameFilesAsync()
     {
+        if (MainUI.Instance == null) return;
+        MainUI.Instance.btnName.text = "Processing...";
+        if (!CheckPlaytestData())
+        {
+            MainUI.Instance.btnName.text = "Fail";
+            MainUI.Instance.message.text = "You have no playtest data!";
+            return;
+        }
         string backupFolderName = PrefixBackupName + DateTime.Now.ToString("yyyyMMdd_HHmmss");
         string backupFolderPath = Path.Combine(rootPath, backupFolderName);
 
         Directory.CreateDirectory(backupFolderPath);
 
-        CopyDirectory(rootPath, backupFolderPath, PrefixBackupName);
+        await Task.Run(() => CopyDirectory(rootPath, backupFolderPath, PrefixBackupName));
         string[] targetFileNames = { "gamedataBuild", "itemdataBuild", "all_SettingProloge", "___Profile_", "___RecordInfo", "___backup" };
         string[] newFileNames = { "gamedataFinal", "itemdataFinal", "all_SettingFinal", "_ProfileFinal", "_RecordFinal", "_BackupFinal" };
-        DeleteFilesAndFolders(rootPath, newFileNames);
-        RenameFilesAndFolders(rootPath, targetFileNames, newFileNames);
+        await Task.Run(() => DeleteFilesAndFolders(rootPath, newFileNames));
+        await Task.Run(() => RenameFilesAndFolders(rootPath, targetFileNames, newFileNames));
+        MainUI.Instance.btnName.text = "Done";
     }
 
+    private bool CheckPlaytestData()
+    {
+        string[] allPaths = Directory.GetFileSystemEntries(rootPath);
+        foreach (var path in allPaths)
+        {
+            string filename = Path.GetFileName(path);
+            if (string.Equals(filename, "___Profile_"))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    
     private void DeleteFilesAndFolders(string folderPath, string[] fileAndFolderNames)
     {
         string[] allPaths = Directory.GetFileSystemEntries(folderPath);
@@ -38,8 +64,7 @@ public class MainHandler : MonoBehaviour
             if (Directory.Exists(path))
             {
                 DeleteFilesAndFolders(path, fileAndFolderNames);
-                if (Array.Exists(fileAndFolderNames,
-                        element => element.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                if (!Directory.EnumerateFileSystemEntries(path).Any() || Array.Exists(fileAndFolderNames, element => element.Equals(name, StringComparison.OrdinalIgnoreCase)))
                 {
                     Directory.Delete(path);
                 }
@@ -112,9 +137,6 @@ public class MainHandler : MonoBehaviour
             else if (Directory.Exists(path))
             {
                 Directory.Move(path, newPath);
-            }
-            else
-            {
             }
         }
     }

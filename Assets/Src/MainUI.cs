@@ -1,9 +1,14 @@
 ﻿using System;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class MainUI : MonoBehaviour
 {
     public static MainUI Instance;
+    public Button runBtn;
+    public TextMeshProUGUI btnName;
+    public TextMeshProUGUI message;
     private MainHandler _mainHandler;
     private void Awake()
     {
@@ -16,16 +21,15 @@ public class MainUI : MonoBehaviour
             Destroy(gameObject);
         }
 
-        _mainHandler = new MainHandler();
+        _mainHandler = gameObject.AddComponent<MainHandler>();
+        message.text = "Do you want to load playtest data?";
+        runBtn.interactable = true;
+        runBtn.onClick.AddListener(OnRunBtnClick);
     }
 
     public void OnRunBtnClick()
     {
-        _mainHandler.BackupAndRenameFiles();
-    }
-
-    public void  OnUndoBtnClick()
-    {
-        
+        runBtn.interactable = false;
+        _mainHandler.BackupAndRenameFilesAsync();
     }
 }
